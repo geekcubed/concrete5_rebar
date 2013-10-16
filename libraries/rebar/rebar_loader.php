@@ -9,11 +9,19 @@ final class RebarLoader {
      */
     static function LoadFramework($pkgHandle = null) {
         
-        $frameworkFiles = array('rebar_exceptions');
+        $frameworkFiles = array(
+            'rebar_exceptions', 
+            'kohana_validation', 
+            'models/attributes/categories/rebar_attribute_key',            
+            'models/attributes/categories/rebar_attribute_value',
+            'models/rebar_model',
+            'models/attributed_rebar_model',
+            'controllers/rebar_controller'
+        );
         
         foreach ($frameworkFiles as $aFile) {
             
-            Loader::library($aFile, $pkgHandle);
+            Loader::library('rebar/'.$aFile, $pkgHandle);
         }
     }    
 }

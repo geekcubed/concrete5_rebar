@@ -185,21 +185,42 @@ abstract class RebarAttributeKey extends AttributeKey {
     }
     
     /**
-     * This is a Static method inherited from the base Concrete5 class.
-     * Rebar can't support this mode of access, as we need to dynamically create
-     * instances of the child class, which late-static binding won't support.
+     * 
      * 
      * @see RebarAttributeKey::getDefaultList()
-     * @deprecated since version 1.0
      * @param string $akCategoryHandle
      * @param array $filters
      * @throws RebarRuntimeException 
      */
     public static function getList($akCategoryHandle, $filters = array()) {
         
-        throw new RebarRuntimeException(
-                    RebarRuntimeException::STATIC_NOT_SUPPORTED
-                );
+        $db = Loader::db();
+        $pkgHandle = $db->GetOne('select pkgHandle from AttributeKeyCategories inner join Packages on Packages.pkgID = AttributeKeyCategories.pkgID where akCategoryHandle = ?', array($akCategoryHandle));
+        $q = 'select akID from AttributeKeys inner join AttributeKeyCategories on AttributeKeys.akCategoryID = AttributeKeyCategories.akCategoryID where akCategoryHandle = ?';
+        foreach ($filters as $key => $value) {
+            $q .= ' and ' . $key . ' = ' . $value . ' ';
+        }
+        $r = $db->Execute($q, array($akCategoryHandle));
+        $list = array();
+        $txt = Loader::helper('text');
+        if ($pkgHandle) {
+            Loader::model('attribute/categories/' . $akCategoryHandle, $pkgHandle);
+        } else {
+            Loader::model('attribute/categories/' . $akCategoryHandle);
+        }
+        $className = $txt->camelcase($akCategoryHandle);
+        while ($row = $r->FetchRow()) {
+            $c1 = $className . 'AttributeKey';
+            $ak = new $c1;
+            $c1a = $ak->getById($row['akID']);
+            if (is_object($c1a)) {
+                $list[] = $c1a;
+            }
+        }
+        $r->Close();
+
+        return $list;
+	
     }
     
     public function getDefaultList($filters = array()) {

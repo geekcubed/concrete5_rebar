@@ -6,6 +6,7 @@ abstract class RebarAttributeValue extends AttributeValue {
     protected $ownerObject = null;
     protected $attributeValueTable;
     protected $attributeValueOwnerIdField;
+    protected $db;
     
     public function getAttributeValueTable() {
         return $this->attributeValueTable;
@@ -17,17 +18,21 @@ abstract class RebarAttributeValue extends AttributeValue {
     
     public function __construct() {
         
-        if (empty($this->$attributeValueTable)) {
+        if (empty($this->attributeValueTable)) {    
             
-            throw new Exception('RebarAttributeValue Exception - 
-                Attribute Value Table not declared');            
+            throw new RebarRuntimeException(
+                RebaRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                new  Exception('AttributeValueTable not declared'));
         }
         
-        if (empty($this->attributeValueOwnerIdField)) {
+        if (empty($this->attributeValueOwnerIdField)) { 
             
-            throw new Exception('RebarAttributeValue Exception - 
-                OwnerId Field not declared');            
+            throw new RebarRuntimeException(
+                RebaRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                new  Exception('AttributeValueOwnerIdField not declared'));
         }
+        
+        $this->db = Loader::db();
     }
     
     public function setOwnerObject($obj) {
@@ -50,9 +55,7 @@ abstract class RebarAttributeValue extends AttributeValue {
     
     public function delete() {
         
-        $db = Loader::db();
-        
-        $db->Execute("DELETE FROM {$this->attributeValueTable} WHERE 
+        $this->db->Execute("DELETE FROM {$this->attributeValueTable} WHERE 
         {$this->attributeValueOwnerIdField} = ? AND akID = ? AND avID = ?",
                 array($this->ownerObject->getID(),
             $this->attributeKey->getAttributeKeyID(),
@@ -73,8 +76,6 @@ abstract class RebarAttributeValue extends AttributeValue {
         
         $results = $this->db->Execute("SELECT avID FROM {$this->$attributeValueTable} 
             WHERE akID = ?", array($akID));
-        
-        
         
         while ($row = $rresults->FetchRow()) {
             $this->db->Execute('DELETE FROM AttributeValues WHERE avID = ?', array($row['avID']));
