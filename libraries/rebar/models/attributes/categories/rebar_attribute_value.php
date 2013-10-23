@@ -21,14 +21,14 @@ abstract class RebarAttributeValue extends AttributeValue {
         if (empty($this->attributeValueTable)) {    
             
             throw new RebarRuntimeException(
-                RebaRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
                 new  Exception('AttributeValueTable not declared'));
         }
         
         if (empty($this->attributeValueOwnerIdField)) { 
             
             throw new RebarRuntimeException(
-                RebaRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
                 new  Exception('AttributeValueOwnerIdField not declared'));
         }
         

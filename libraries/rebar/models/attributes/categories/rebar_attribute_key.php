@@ -4,6 +4,7 @@ abstract class RebarAttributeKey extends AttributeKey {
     
     protected $searchIndexFieldDefinition;
     protected $searchIndexTable;
+    protected $searchIndexPkID;
     protected $attributeKeyTable;
     protected $attributeCategoryHandle;
     protected $attributeValueClass;
@@ -17,6 +18,10 @@ abstract class RebarAttributeKey extends AttributeKey {
         return $this->searchIndexFieldDefinition;
     }
     
+    public function getSearchIndexPkID() {
+        return $this->searchIndexPkID;
+    }
+    
     public function getAttributeKeyDisplayOrder() {
         return $this->displayOrder;
     }
@@ -24,36 +29,46 @@ abstract class RebarAttributeKey extends AttributeKey {
     public function getAttributeCategoryHandle() {
         return $this->attributeCategoryHandle;
     }
+    
+    public function getAttributeKeyTable() {
+        return $this->attributeKeyTable;
+    }
         
     public function __construct() {
         
         if(empty($this->searchIndexFieldDefinition)) {            
             throw new RebarRuntimeException(
-                RebaRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
                 new  Exception('SearchIndexField not declared'));
         }
         
         if(empty($this->searchIndexTable)) {            
             throw new RebarRuntimeException(
-                RebaRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
                 new  Exception('SearchIndexTable not declared'));
         }
         
+        if(empty($this->searchIndexPkID)) {            
+            throw new RebarRuntimeException(
+                RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                new  Exception('SearchIndexPkID not declared'));
+        }        
+        
         if(empty($this->attributeKeyTable)) {            
             throw new RebarRuntimeException(
-                RebaRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
                 new  Exception('AttributeKeyTable not declared'));
         }
         
         if(empty($this->attributeCategoryHandle)) {            
             throw new RebarRuntimeException(
-                RebaRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
                 new  Exception('AttributeCategoryHandle not declared'));
         }
         
         if(empty($this->attributeValueClass)) {            
             throw new RebarRuntimeException(
-                RebaRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
                 new  Exception('AttributeValueClass not declared'));
         }
         
@@ -70,12 +85,23 @@ abstract class RebarAttributeKey extends AttributeKey {
         $this->setPropertiesFromArray($row);
     }
     
+    private static function preventDirectCall() {
+        
+        if (get_called_class() == __CLASS__) {
+            //RebarAttributeKey has been called directly
+            throw new RebarRuntimeException(
+                    RebarRuntimeException::METHOD_NOT_OVERRIDEN);
+            
+        }
+    }
+    
     public function getByID($akID) {
     
-        if (!isset($this)) {
+        /*if (!isset($this) || !($this instanceof RebarAttributeKey)) {
             throw new RebarRuntimeException(
-                    RebarRuntimeException::NONE_STATIC_METHOD);
-        }
+                    RebarRuntimeException::NONE_STATIC_METHOD, 0, 
+                    new Exception(__METHOD__));
+        }*/
         
         $objName = get_called_class();
         $ak = new $objName();
@@ -87,21 +113,22 @@ abstract class RebarAttributeKey extends AttributeKey {
     }
     
     public function getByHandle($akHandle) {
-            
-        if (!isset($this)) {
-            throw new RebarRuntimeException(
-                    RebarRuntimeException::NONE_STATIC_METHOD);
-        }
         
-        $objName = get_called_class();
+        if (!isset($this) || !($this instanceof RebarAttributeKey)) {
+            //Allow for static call, but must be from a child
+            self::preventDirectCall();
+        }
+       
+        $objName = get_called_class();    
         $ak = new $objName;
         
-        $akID = $this->db->GetOne("SELECT akID FROM AttributeKeys 
+        $db = Loader::db();
+        $akID = $db->GetOne("SELECT akID FROM AttributeKeys 
             INNER JOIN AttributeKeyCategories ON AttributeKeys.akCategoryID = 
             AttributeKeyCategories.akCategoryID WHERE akHandle = ? AND 
             akCategoryHandle = ?", 
                 array($akHandle, $ak->getAttributeCategoryHandle()));
-       
+        
         $ak->load($akID);
         
         if ($ak->getAttributeKeyID() > 0) {
@@ -119,7 +146,7 @@ abstract class RebarAttributeKey extends AttributeKey {
         return call_user_func_array(array($av, $method), array());
     }
     
-    protected function saveAttribute(AttributedRebarModel $ownerObj, 
+    protected function saveAttribute(RebarAttributedModel $ownerObj, 
             $value = false) {
        
         $av = $ownerObj->getAttributeValueObject($this, true);
@@ -142,7 +169,8 @@ abstract class RebarAttributeKey extends AttributeKey {
             
         if (!isset($this)) {
             throw new RebarRuntimeException(
-                    RebarRuntimeException::NONE_STATIC_METHOD);
+                    RebarRuntimeException::NONE_STATIC_METHOD, 0, 
+                    new Exception(__METHOD__));
         }
         
         $ak = parent::add($this->attributeCategoryHandle, $type, $args, $pkg);
@@ -185,47 +213,67 @@ abstract class RebarAttributeKey extends AttributeKey {
     }
     
     /**
-     * 
+     * This is a Static method inherited from the base Concrete5 class.
+     * Rebar can't support this mode of access, as we need to dynamically create
+     * instances of the child class, which late-static binding won't support.
      * 
      * @see RebarAttributeKey::getDefaultList()
+     * @deprecated since version 1.0
      * @param string $akCategoryHandle
      * @param array $filters
      * @throws RebarRuntimeException 
      */
-    public static function getList($akCategoryHandle, $filters = array()) {
+    public static function getList($akCategoryHandle =null, $filters = array()) {
+        if (empty($akCategoryHandle)) {
+            
+            $akType = get_called_class();
+            $ak = new $akType();
+            $akCategoryHandle = $ak->getAttributeCategoryHandle();
+        }
         
+       return parent::getList($akCategoryHandle, $filters);
+        
+        
+        
+        
+        /*
         $db = Loader::db();
         $pkgHandle = $db->GetOne('select pkgHandle from AttributeKeyCategories inner join Packages on Packages.pkgID = AttributeKeyCategories.pkgID where akCategoryHandle = ?', array($akCategoryHandle));
         $q = 'select akID from AttributeKeys inner join AttributeKeyCategories on AttributeKeys.akCategoryID = AttributeKeyCategories.akCategoryID where akCategoryHandle = ?';
-        foreach ($filters as $key => $value) {
-            $q .= ' and ' . $key . ' = ' . $value . ' ';
+        foreach($filters as $key => $value) {
+                $q .= ' and ' . $key . ' = ' . $value . ' ';
         }
         $r = $db->Execute($q, array($akCategoryHandle));
         $list = array();
         $txt = Loader::helper('text');
-        if ($pkgHandle) {
-            Loader::model('attribute/categories/' . $akCategoryHandle, $pkgHandle);
+        if ($pkgHandle) { 
+                Loader::model('attribute/categories/' . $akCategoryHandle, $pkgHandle);
         } else {
-            Loader::model('attribute/categories/' . $akCategoryHandle);
+                Loader::model('attribute/categories/' . $akCategoryHandle);
         }
         $className = $txt->camelcase($akCategoryHandle);
         while ($row = $r->FetchRow()) {
-            $c1 = $className . 'AttributeKey';
-            $ak = new $c1;
-            $c1a = $ak->getById($row['akID']);
-            if (is_object($c1a)) {
-                $list[] = $c1a;
-            }
+                $c1 = $className . 'AttributeKey';
+                $ak = new $c1;
+                $c1a = $ak->getById($row['akID']);
+                if (is_object($c1a)) {
+                        $list[] = $c1a;
+                }
         }
         $r->Close();
-
+        
         return $list;
-	
+	*/
+        /*
+        throw new RebarRuntimeException(
+                    RebarRuntimeException::STATIC_NOT_SUPPORTED, 0, 
+                    new Exception(__METHOD__)
+                );*/
     }
     
     public function getDefaultList($filters = array()) {
         
-        return parent::getList($this->attributeCategoryHandle, $filters);        
+        return self::getList($this->attributeCategoryHandle, $filters);        
     }
     
     public function getColumnHeaderList() {
@@ -263,7 +311,8 @@ abstract class RebarAttributeKey extends AttributeKey {
         
         if (!isset($this)) {
             throw new RebarRuntimeException(
-                    RebarRuntimeException::NONE_STATIC_METHOD);
+                    RebarRuntimeException::NONE_STATIC_METHOD, 0, 
+                    new Exception(__METHOD__));
         }
         
         $objClass = get_called_class();

@@ -2,8 +2,8 @@
 
 abstract class RebarModel extends Object {
     
-    protected $table;
-    protected $pkID = 'id';
+    protected static $table;
+    protected static $pkID = 'id';
     ///TODO - FieldMeta needs to be profiled to see if a static property would
     //enable some duplicate DB calls to be removed (hopefully the DB layer will
     //cache this but you never know)
@@ -16,9 +16,11 @@ abstract class RebarModel extends Object {
     
     public function __construct($populateFieldMeta = false) {
         
-        if (empty($this->table)) {
+        if (empty(static::$table)) {
             
-            throw new Exception('RebarModel Exception - table not set');            
+             throw new RebarRuntimeException(
+                RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                new  Exception('Backing Table not declared'));
         }
         
         $this->populateFieldMeta = $populateFieldMeta;
@@ -30,9 +32,19 @@ abstract class RebarModel extends Object {
         }
     }
     
+    public function getTable() {        
+        return static::$table;
+    }
+    
+    public function getPrimaryKeyColumm() {        
+        return static::$pkID;        
+    }
+    
     public function getID() {
         
-        return $this->__get($this->$pkID);
+        if (!empty($this->$pkID)) {
+            return $this->$pkID;
+        }
     }
     
     public static function getByID($id) {
@@ -41,7 +53,7 @@ abstract class RebarModel extends Object {
         $obj = null;
         $objClass = get_called_class();
         
-        $data = $db->getRow("SELECT * FROM " . self::$table . " WHERE " . self::$pkID . " = ?", 
+        $data = $db->getRow("SELECT * FROM " . static::$table . " WHERE " . static::$pkID . " = ?", 
                 array($id));
         
         if (!empty($data)) {
@@ -60,7 +72,7 @@ abstract class RebarModel extends Object {
         $obj = null;
         $objClass = get_called_class();
         
-        $data = $db->getRow("SELECT * FROM " . self::$table . " WHERE {$fieldName} = ?", 
+        $data = $db->getRow("SELECT * FROM " . static::$table . " WHERE {$fieldName} = ?", 
                 array($fieldValue));
         
         if (!empty($data)) {
@@ -74,21 +86,23 @@ abstract class RebarModel extends Object {
     }
     
     public function save($data) {
-
+        
         $record = $this->recordFromData($data);
 
         if ($this->isNewRecord($data)) {
-            $this->db->AutoExecute($this->table, $record, 'INSERT');
+            $this->db->AutoExecute(static::$table, $record, 'INSERT');
             return $this->db->Insert_ID();
         } else {
-            $id = intval($post[$this->pkid]);
-            $this->db->AutoExecute($this->table, $record, 'UPDATE', "{$this->pkid}={$id}");
+            
+            $id = intval($data[static::$pkID]);            
+            $this->db->AutoExecute(static::$table, $record, 'UPDATE', static::$pkID . "={$id}");
+            
             return $id;
         }
     }
     
     protected function isNewRecord($data) {
-        $id = isset($post[$this->pkid]) ? intval($post[$this->pkid]) : 0;
+        $id = isset($data[static::$pkID]) ? intval($data[static::$pkID]) : 0;
 	
         return ($id == 0);
     }
@@ -99,12 +113,12 @@ abstract class RebarModel extends Object {
         
         //We MUST have meta at this point
         //Bit of deferred loading :)
-        if(empty($this->field)) {
+        if(empty($this->fields)) {
             $this->loadFieldMeta();
         }
         
         foreach ($this->fields as $field) {
-            $val = array_key_exists($field, $post) ? $post[$field] : null;
+            $val = array_key_exists($field, $data) ? $data[$field] : null;
             $val = ($val === '') ? null : $val; //don't just check for empty() because then a '0' would erroneously become null!
             $record[$field] = $val;
         }
@@ -114,8 +128,8 @@ abstract class RebarModel extends Object {
     
     private function loadFieldMeta() {
         
-        foreach ($this->db->MetaColumns(self::$table) as $aCol) {
-            if ($aCol->name != self::$pkID) {
+        foreach ($this->db->MetaColumns(static::$table) as $aCol) {
+            if ($aCol->name != static::$pkID) {
 
                 $this->fields[] = $aCol->name;
             }
@@ -135,7 +149,7 @@ abstract class RebarModel extends Object {
     // -'atleast[0]' rule is added to non-required unsigned integer fields
     // -'atleast[1]' rule is added to required unsigned integer fields
     protected function add_standard_rules(KohanaValidation &$v, $fields_and_labels) {
-        $cols = $this->db->MetaColumns($this->table);
+        $cols = $this->db->MetaColumns(static::$table);
         foreach ($cols as $col) {
             if (array_key_exists($col->name, $fields_and_labels)) {
                 $field = $col->name;

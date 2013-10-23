@@ -15,7 +15,9 @@ final class RebarLoader {
             'models/attributes/categories/rebar_attribute_key',            
             'models/attributes/categories/rebar_attribute_value',
             'models/rebar_model',
-            'models/attributed_rebar_model',
+            'models/rebar_attributed_model',
+            'rebar_item_list',            
+            'rebar_display_table',
             'controllers/rebar_controller'
         );
         

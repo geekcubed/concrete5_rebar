@@ -6,8 +6,10 @@ final class RebarRuntimeException extends Exception {
      * Some constants to standardise exception messages
      */
     const NONE_STATIC_METHOD = "Non-Static method called Statically";
-    const MISCONFIGURED_INSTANCE = "Instance has not ben configured correctly";
+    const MISCONFIGURED_INSTANCE = "Instance has not been configured correctly";
     const STATIC_NOT_SUPPORTED = "Static access to this method is not supported";
+    const METHOD_NOT_OVERRIDEN = "The called method must be overriden in an child class";
+    const INCORRECT_REFERENCE_TYPE = "The supplied Type reference is not valid in this context";
     
     /**
      * Constructor. Redefined from parent to make $message none-optional
