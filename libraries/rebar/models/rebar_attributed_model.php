@@ -1,27 +1,41 @@
 <?php defined('C5_EXECUTE') or die(_("Access Denied."));
 
-abstract class AttributedRebarModel extends RebarModel {
+abstract class RebarAttributedModel extends RebarModel {
     
-    protected static $attributeKeyClass;
-    protected static $attributeValueClass;
+    protected static $attributeKeyType;
+    protected static $attributeValueType;
     
     public function __construct($populateFieldMeta = false) {
                 
         parent::__construct($populateFieldMeta);
         
-        if (empty($this->attributeKeyClass)
-                || empty($this->attributeValueClass)){
+        if (empty(static::$attributeKeyType)
+                || empty(static::$attributeValueType)){
             
-            throw new Exception('AttributedRebarModel Exception - 
-                Attribute Class(es) not set');           
+            throw new RebarRuntimeException(
+                RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
+                new  Exception('Attribute Class(es) not declared'));
         }
+    }
+    
+    public static function getAttributeKeyType() {
+        
+        $rtn = static::$attributeKeyType;
+        return $rtn;
+        
+    }
+    
+    public static function getAttributeValueType() {
+        
+        return static::$attributeValueType;
+        
     }
     
     protected function getAttributeKeyObj($ak) {
         
         if (!is_object($ak)) {            
             $ak = forward_static_call(
-                    array(self::$attributeKeyClass, 'getByHandle'), $ak);
+                    array(static::$attributeKeyType, 'getByHandle'), $ak);
         }
         
         return $ak;
@@ -55,7 +69,7 @@ abstract class AttributedRebarModel extends RebarModel {
     
     public function getAttributes($method = 'getValue') {
         
-        $attrValObj = new self::$attributeValueClass();
+        $attrValObj = new static::$attributeValueType();
         
         $values = $this->db->GetAll(
                 "SELECT akID, avID FROM {$attrValObj->getAttributeValueTable()} 
@@ -66,7 +80,7 @@ abstract class AttributedRebarModel extends RebarModel {
         
         foreach ($values as $val) {
            
-            $ak = forward_static_call(array(self::$attributeKeyClass, 'getByID'),
+            $ak = forward_static_call(array(static::$attributeKeyType, 'getByID'),
                     $val['akID']);
             
             if (is_object($ak)) {
@@ -85,13 +99,13 @@ abstract class AttributedRebarModel extends RebarModel {
         $v = array();
         
         $avID = forward_static_call(
-                    array($self::$attributeValueClass, 'getValueID'),
+                    array(static::$attributeValueType, 'getValueID'),
                 $this->getID(), $ak->getAttributeKeyID());
         
        if ($avID > 0) {
            
            forward_static_call(
-                    array(self::$attributeValueClass, 'getByID'), $avID);
+                    array(static::$attributeValueType, 'getByID'), $avID);
             if (is_object($av)) {
                 
                 $av->setOwnerObject($this);
