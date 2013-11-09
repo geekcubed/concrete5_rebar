@@ -197,6 +197,22 @@ abstract class RebarAttributeKey extends AttributeKey {
         return $nak;
     }
     
+    public function addAttributeValue() {
+        
+        $u = new User();
+        $dh = Loader::helper('date');
+        $uID = $u->isRegistered() ? $u->getUserID() : 0;
+        $avDate = $dh->getLocalDateTime();
+        
+        $v = array($this->atID, $this->akID, $uID, $avDate);
+        $this->db->Execute('insert into AttributeValues (atID, akID,  uID, avDateAdded) values (?, ?, ?, ?)', $v);
+        
+        $avID = $this->db->Insert_ID();
+        
+        return forward_static_call(
+                    array($this->attributeValueClass, 'getByID'), $avID);
+    }
+    
     public function update($args) {
         $ak = parent::update($args);
     }

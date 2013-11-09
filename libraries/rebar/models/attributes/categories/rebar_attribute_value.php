@@ -4,28 +4,28 @@
 abstract class RebarAttributeValue extends AttributeValue {
     
     protected $ownerObject = null;
-    protected $attributeValueTable;
-    protected $attributeValueOwnerIdField;
+    protected static $attributeValueTable;
+    protected static $attributeValueOwnerIdField;
     protected $db;
     
     public function getAttributeValueTable() {
-        return $this->attributeValueTable;
+        return static::$attributeValueTable;
     }
     
     public function getAttributeValueIdField() {
-        return $this->attributeValueOwnerIdField;
+        return static::$attributeValueOwnerIdField;
     }
     
     public function __construct() {
         
-        if (empty($this->attributeValueTable)) {    
+        if (empty(static::$attributeValueTable)) {    
             
             throw new RebarRuntimeException(
                 RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
                 new  Exception('AttributeValueTable not declared'));
         }
         
-        if (empty($this->attributeValueOwnerIdField)) { 
+        if (empty(static::$attributeValueOwnerIdField)) { 
             
             throw new RebarRuntimeException(
                 RebarRuntimeException::MISCONFIGURED_INSTANCE, 0,
@@ -45,8 +45,8 @@ abstract class RebarAttributeValue extends AttributeValue {
         $db = Loader::db();
         $avID = 0;
         
-        $avID = $db->GetOne("SELECT avID FROM {$this->attributeValueTable} WHERE 
-            {$this->attributeValueOwnerIdField} = ? AND akID = ?",
+        $avID = $db->GetOne("SELECT avID FROM " . static::$attributeValueTable . " WHERE "
+            . static::$attributeValueOwnerIdField  . " = ? AND akID = ?",
             array($ownerID, $akID)
         );
             

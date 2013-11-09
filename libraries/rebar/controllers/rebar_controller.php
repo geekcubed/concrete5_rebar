@@ -153,16 +153,17 @@ class RebarController extends Controller {
     public function processEditForm(&$id, RebarModel $model) {
         
         $this->set($model->getPrimaryKeyColumm(), $id);
-
-        $post = $this->post();
-        if ($post) {
-            $error = $model->validate($post);
+        
+        if ($this->isPost()) {
+            $postData = $this->post();
+            $error = $model->validate($postData);
+            
             if ($error->has()) {
                 $this->set('error', $error); //C5 automagically displays these errors for us in the view
                 //C5 form helpers will automatically repopulate form fields from $_POST data
                 return self::$ProcessActionError; // caller should manually repopulate data that isn't in $_POST
             } else {
-                $id = $model->save($post);
+                $id = $model->save($postData);
                 return self::$ProcessActionSuccess; // caller should set flash message and redirect
             }
         } else if (empty($id)) {
@@ -179,5 +180,6 @@ class RebarController extends Controller {
             return self::$ProcessActionEdit; // caller should populate form fields with existing record data
         }
     }
+    
 
 }

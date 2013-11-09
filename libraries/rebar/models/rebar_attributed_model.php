@@ -41,7 +41,7 @@ abstract class RebarAttributedModel extends RebarModel {
         return $ak;
     }    
     
-    public function setAttribute($ak, $value) {
+    public function setAttribute($ak, $value = null) {
                  
         if (!is_object($ak)) {            
             $ak = $this->getAttributeKeyObj($ak);
@@ -102,10 +102,11 @@ abstract class RebarAttributedModel extends RebarModel {
                     array(static::$attributeValueType, 'getValueID'),
                 $this->getID(), $ak->getAttributeKeyID());
         
-       if ($avID > 0) {
+        if ($avID > 0) {
            
-           forward_static_call(
+            $av = forward_static_call(
                     array(static::$attributeValueType, 'getByID'), $avID);
+            
             if (is_object($av)) {
                 
                 $av->setOwnerObject($this);
@@ -114,7 +115,7 @@ abstract class RebarAttributedModel extends RebarModel {
         }
 
         if ($createIfNotFound) {
-           if ((!is_object($av)) || ($av->getValueIDUseCount() > 1)) {
+           if ((!is_object($av)) /*|| ($av->getValueIDUseCount() > 1)*/) {
                 $av = $ak->addAttributeValue();
             }
         }

@@ -42,9 +42,13 @@ abstract class RebarModel extends Object {
     
     public function getID() {
         
-        if (!empty($this->$pkID)) {
-            return $this->$pkID;
+        if (!empty($this->{static::$pkID})) {
+            return $this->{static::$pkID};
         }
+    }
+    
+    protected static function who() {        
+        return get_called_class();
     }
     
     public static function getByID($id) {
@@ -88,7 +92,7 @@ abstract class RebarModel extends Object {
     public function save($data) {
         
         $record = $this->recordFromData($data);
-
+        
         if ($this->isNewRecord($data)) {
             $this->db->AutoExecute(static::$table, $record, 'INSERT');
             return $this->db->Insert_ID();
@@ -118,20 +122,40 @@ abstract class RebarModel extends Object {
         }
         
         foreach ($this->fields as $field) {
-            $val = array_key_exists($field, $data) ? $data[$field] : null;
-            $val = ($val === '') ? null : $val; //don't just check for empty() because then a '0' would erroneously become null!
-            $record[$field] = $val;
+            
+            $val = array_key_exists($field->name, $data) ? $data[$field->name] : null;
+           
+            //Null out nullables
+            if ($field->not_null == false && $val == '') {
+                $val = null;
+            } 
+            
+            //Handle types etc;
+            switch ($field->type) {
+                //Integers
+                case 'tinyint':
+                case 'smallint':                
+                case 'int':
+                case 'bigint':
+                case 'integer':
+                case 'serial':
+                    $val = intval($val);
+                    break;
+            }
+            
+            $record[$field->name] = $val;
         }
         
         return $record;
     }
-    
+        
     private function loadFieldMeta() {
         
         foreach ($this->db->MetaColumns(static::$table) as $aCol) {
             if ($aCol->name != static::$pkID) {
-
-                $this->fields[] = $aCol->name;
+                
+                $this->fields[] = $aCol;
+                
             }
         }
         

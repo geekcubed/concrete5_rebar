@@ -1264,6 +1264,7 @@ class KohanaValidationHelpers {
 	 */
 	public static function inrange($number, array $range) //NOTE: Can't name this function "range" because that's already a built-in php function.
 	{
+            
 		$is_valid = false;
 		
 		if (is_numeric($number) && count($range) == 2)
@@ -1281,7 +1282,7 @@ class KohanaValidationHelpers {
 				$is_valid = ($number >= $floor && $number <= $ceil);
 			}
 		}
-		
+                
 		return $is_valid;
 	}
 
