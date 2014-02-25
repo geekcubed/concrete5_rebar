@@ -1,49 +1,90 @@
-<?php
-
-defined('C5_EXECUTE') or die(_("Access Denied."));
-
-//Provides some improved convenience methods for our single_page controllers
-
+<?php defined('C5_EXECUTE') or die(_("Access Denied."));
+/**
+ * Rebar Controller
+ * Provides some basic improvments over the default c5 controller. Mainly this
+ * is to add support for single_page controllers that serve multiple urls
+ *
+ * @package Rebar
+ * @subpackage Controllers
+ * @copyright (c) 2014, Ian Stapleton
+ */
 class RebarController extends Controller {
 
+    /**
+     * String variables that allow us to easily decide what action is taken place
+     * when we are running a CRUD type controller.
+     */
     protected static $ProcessActionAdd = 'add';
     protected static $ProcessActionEdit = 'edit';
     protected static $ProcessActionSuccess = 'success';
     protected static $ProcessActionError = 'error';
-    
+    protected $record = null;
+
     public function __construct() {
         parent::__construct();
 
         $this->initFlash();
     }
 
+    /**
+     * Generate and handle CSRF tokens.
+     *
+     * Generates a new validation token and stores it in the View collection as
+     * $token If a POST request is taking place, calling this method will attempt
+     * to validate a token
+     *
+     * @throws Exception General exception when validation of the Token fails.
+     *
+     */
     protected function initCSRFToken() {
         $token = Loader::helper('validation/token');
+
+        //If POST'ing, validate
         if (!empty($_POST) && !$token->validate()) {
-            die($token->getErrorMessage());
+            //Invalid
+            throw new Exception($token->getErrorMessage());
         }
 
         $this->set('token', $token->output('', true));
     }
 
+    /**
+     * Init session variables for flash messages
+     */
     private function initFlash() {
         $types = array('message', 'success', 'error');
         foreach ($types as $type) {
             $key = "flash_{$type}";
             if (!empty($_SESSION[$key])) {
-                $this->set($type, $_SESSION[$key]); //C5 automagically displays 'message', 'success', and 'error' for us in dashboard views
+                $this->set($type, $_SESSION[$key]);
                 unset($_SESSION[$key]);
             }
         }
     }
 
-    //Uses session to set 'message', 'success', or 'error' variable next time the page is loaded
+    /**
+     * Store a Flash message
+     *
+     * Flash messages can be used to persist information messages when a controller
+     * action results in a redirect after processing.
+     *
+     * When working on Dashboard pages, these messages are automatically shown
+     * to the user
+     *
+     * @param string $text Message string
+     * @param string $type Message type ('message', 'success' or 'error')
+     */
     public function flash($text, $type = 'message') {
         $key = "flash_{$type}";
         $_SESSION[$key] = $text;
     }
 
-    //Redirect to an action in this controller
+    /**
+     * Perform a redirect to a different action. Method excepts additional
+     * dynamic arguments which are passed via func_get_args();
+     *
+     * @param string $action Action name
+     */
     public function internalRedirect($action) {
         //Do some fancy php stuff so we can accept and pass along
         // a variable number of args (anything after the $action arg).
@@ -52,17 +93,24 @@ class RebarController extends Controller {
         call_user_func_array(array('parent', 'redirect'), $args);
     }
 
-    //Render a view file with the given name that exists in the single_pages
-    // directory that corresponds with this controller's location / class name.
-    //NOTE: Requires Concrete 5.5+ (or for 5.4 compatibility you could hack the core file concrete/libraries/view.php, as per https://github.com/concrete5/concrete5/pull/147/files)
+    /**
+     * Render a view file with the given name that exists in the single_pages
+     * directory that corresponds with this controller's location / class name.
+     *
+     * @param string $view View template name
+     */
     public function render($view) {
         $path = $this->path($view);
         parent::render($path);
     }
 
-    //Return this controller's page path, with optional other things appended to it.
-    //Note that a controller's path is wherever the single_page lives
-    // in the sitemap -- not a specific action or view that is being displayed.
+    /**
+     * Return this controller's page path. This is based on the controller's
+     * location in the sitemap, not the Action or View being rendered
+     *
+     * @param string $append Additional path components to append
+     * @return string
+     */
     public function path($append = '') {
         $path = $this->getCollectionObject()->getCollectionPath();
         if (!empty($append)) {
@@ -73,113 +121,125 @@ class RebarController extends Controller {
 
     //Wrapper around View::url that always passes the controller's path as the url path
     // so you can call url('task', etc.) instead of url('path/to/controller', 'tasks', etc.).
+
+    /**
+     * Wrapper around the default Concrete5 View:url() method. Method excepts
+     * additional dynamic arguments which are passed via func_get_args();
+     *
+     * Shortcut to allow you to call url('task', 'param') instead of the full
+     * url('path/to/controller', 'tasks', 'param')
+     *
+     * @param string $task
+     * @return string
+     */
     public function url($task = null) {
         //Do some fancy php stuff so we can accept and pass along
         // a variable number of args (anything after the $task arg).
+        View::url();
         $args = func_get_args();
         array_unshift($args, $this->path());
         return call_user_func_array(array('View', 'url'), $args);
     }
 
-    //Sets controller variables from an associative array (keys become variable names)
-    //Optionally pass an array of key names that we should use (we'll ignore everything else).
-    public function setArray($obj) {
-        foreach (get_object_vars($obj) as $key=>$value) {
-            
+    /**
+     * Sets controller variables from an associative array (keys become variable names)
+     *
+     * @param array $arr
+     */
+    public function setArray(array $arr) {
+        $this->setObject((object) $arr);
+    }
+
+    /**
+     * Sets controller variables from object properties (Property names
+     * become variable names)
+     *
+     * @param object $obj
+     */
+    public function setObject($obj) {
+        foreach (get_object_vars($obj) as $key => $value) {
             $this->set($key, $value);
         }
     }
 
-    //Renders the 404 page (and send appropriate http header).
-    //Useful when the user hits an actual controller method,
-    // but passes in the wrong id number or some other parameter makes the request invalid.
+    /**
+     * Renders the default 404 Concrete5 template, setting the correct http
+     * header at the same time.
+     */
     public function render404() {
         header("HTTP/1.0 404 Not Found");
         parent::render('/page_not_found');
     }
 
+    /**
+     * Renders the 404 page with header, and terminates execution. Useful for
+     * "early exit" parameter checking on Controller methods.
+     */
     public function render404AndExit() {
         $this->render404();
         exit;
     }
 
-    //processEditForm()
-    //
-	//Pass in the record id (or null for new records)
-    // and the corresponding model object (which must extend BasicCRUDModel or SortableCRUDModel).
-    //We check $_POST and do various things to it, then return a code that tells you the result.
-    //
-	// * If data has been POSTed, we validate the data (via model's validate() method).
-    //    ->If validation succeeds, we save the data (via model's save() method),
-    //      set the given $id to the record's id (useful for new records), and return code 'success'.
-    //    ->If validation false, we send error messages to the view, and return code 'error'.
-    // * If no data has been POSTed and the given $id is empty, we do nothing and return code 'add'.
-    // * If no data has been POSTed and the given $id is not empty, we retrieve the record (via model's getById() method).
-    //    -> If record is found, we send its data to the view and return code 'edit'.
-    //    -> If no record is found for the given id, we render the 404 page and halt execution.
-    //
-	// Regardless of the result code, we also always call $this->set('id', $id) for you.
-    //
-	//WHAT YOU SHOULD DO WITH THE RETURNED RESULT CODE:
-    // Under normal circumstances, the only result code you need to worry about is 'success',
-    //  in which case you should set a flash message and redirect.
-    // But occasionally you might need to do things for other result codes as well:
-    //  -'add': initialize default form fields for new records (unless their default is empty/0, in which case you don't need to do anything)
-    //  -'edit': populate data that doesn't come from the database record (unless it's common to all results -- see below)
-    //  -'error': populate data that isn't in $_POST (unless it's common to all results -- see below)
-    // (Note that the situations where you'd need to do something for 'edit' and 'error' are extremely rare
-    //   [e.g. repopulating checkbox lists that represent many-to-many relationships, since C5 form helpers don't handle those]
-    //   so don't worry about them until you run into a problem where it's obvious that's what you need to do!)
-    //
-	// Under most circumstances, you should also always do the following 2 things which are common to all results:
-    // 1) set data that doesn't come from the database and isn't POSTed (e.g. dropdown list choices)
-    // 2) call the render function to display the form
-    //
-	//EXAMPLE USAGE:
-    // public function edit($id = null) {
-    //     $model = new ThingyModel;
-    //     
-    //     $result = $this->processEditForm($id, $model);
-    //     if ($result == 'success') {
-    //         $this->flash('Thingy Saved!');
-    //         $this->redirect('view');
-    //     }
-    //     
-    //     $choice_options = array('0' => 'Choose One', '1' => 'First Choice', '2' => 'Second Choice', '3' => 'Third Choice');
-    //     $this->set('choice_options', $choice_options);
-    //     
-    //     $this->render('edit');
-    // }
+    /**
+     * Automatically handle Create, Update, Add or Edit actions against RebarModel
+     * objects.  If http POST is being performed, the record will be populated,
+     * validated and created/updated.
+     *
+     * The result code allows you to take the correct "next step":
+     * <ul>
+     * <li>Add : No POST data found. Display the empty form for creating a new record</li>
+     * <li>Edit : No POST data found. The record has been loaded and set as $this->record</li>
+     * <li>Success : POST data found. The record validated and was updated or created</li>
+     * <li>Error : POST data found. The record did not validate. $this->error contains an C5 Error Object</li>
+     * </ul>
+     *
+     * Typically the only action you need to take next is to initialise any
+     * form data that isn't related to the Object model directly - e.g. Select
+     * element options.
+     *
+     * @param mixed $id Id of the record to edit/update, or null if creating
+     * @param RebarModel $model empty (new) object of the correct model type
+     * @return string Result status
+     */
     public function processEditForm(&$id, RebarModel $model) {
-        
+
         $this->set($model->getPrimaryKeyColumm(), $id);
-        
+
         if ($this->isPost()) {
             $postData = $this->post();
             $error = $model->validate($postData);
-            
-            if ($error->has()) {
-                $this->set('error', $error); //C5 automagically displays these errors for us in the view
+
+            if ($error->has()) {                
+                //C5 Dashboard pages automagically displays these errors for us in the view
                 //C5 form helpers will automatically repopulate form fields from $_POST data
-                return self::$ProcessActionError; // caller should manually repopulate data that isn't in $_POST
+                $this->set('error', $error); 
+                
+                //caller should manually repopulate data that isn't in $_POST
+                return self::$ProcessActionError;
             } else {
                 $id = $model->save($postData);
-                return self::$ProcessActionSuccess; // caller should set flash message and redirect
+                $this->record = $model->getByID($id);
+
+                //caller should set flash message and redirect
+                return self::$ProcessActionSuccess; 
             }
         } else if (empty($id)) {
-            return self::$ProcessActionAdd; // caller should initialize form fields that don't start out empty/0
+            
+            //caller should initialize form fields that don't start out empty/0
+            return self::$ProcessActionAdd; 
         } else {
+            
             //Populate form fields with existing record data
-            $record = $model->getById($id);
-            if (!$record) {
+            $this->record = $model->getById($id);
+            if (!$this->record) {
                 $this->render404AndExit();
             }
-            
-            $this->setArray($record);
 
-            return self::$ProcessActionEdit; // caller should populate form fields with existing record data
+            $this->setObject($this->record);
+
+            //caller should populate form fields with existing record data
+            return self::$ProcessActionEdit;
         }
     }
-    
 
 }
