@@ -27,6 +27,9 @@ Rebar fully supports the Concrete5 Attribute/Value system. You can easily add an
 of the default Attribute types (or roll your own) to your models. This means it's very
 quick to add drop-down lists of options, addresses etc.
 
+###Validation
+Rebar uses a fork of the validation library from the Kohana Framework. It supports automatic validation of Model properites via data table Meta Data. Validation can easily be extended to include custom logic and the processing of attributes.
+
 
 ## Requirements
 * RebarModel is built around Late Static Bindings. This means PHP5.3+ - ideally 5.4+ for performance gains
