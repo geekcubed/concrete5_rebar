@@ -153,7 +153,7 @@ abstract class RebarModel extends Object {
 
         $record = array();
 
-        //We MUST have meta at this point
+        //We really MUST have meta at this point
         //Bit of deferred loading :)
         if (empty($this->fields)) {
             $this->loadFieldMeta();
@@ -201,7 +201,7 @@ abstract class RebarModel extends Object {
     private function loadFieldMeta() {
 
         foreach ($this->db->MetaColumns(static::$table) as $aCol) {
-            if ($aCol->name != static::$pkID) {
+            if ($aCol->name != static::$pkID && $aCol->name != 'deleted') {
 
                 $this->fields[] = $aCol;
             }
