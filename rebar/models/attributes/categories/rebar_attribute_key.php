@@ -343,6 +343,18 @@ abstract class RebarAttributeKey extends AttributeKey {
                 " SET displayOrder = {$i} WHERE akID = ?", array($ats[$i]));
         }
     }
+    
+    public function addRecordToIndex($columnHeaders, $attribs, $rs) {        
+        
+        parent::reindex($this->getIndexedSearchTable(), $columnHeaders, $attribs, $rs);
+    }
+    
+    public function removeRecordFromIndex($modelObjID) {
+        
+        $this->db->Execute(
+                "DELETE FROM {$this->getIndexedSearchTable()} WHERE {$this->getSearchIndexPkID()} = ? LIMIT 1", 
+                array($modelObjID));
+    }
 }
 
 /*public function getAttributes($ownerPartID, $method = 'getValue') {

@@ -18,6 +18,15 @@ abstract class RebarAttributedModel extends RebarModel {
         }
     }
     
+    function delete() {
+        
+        parent::delete();
+        
+        //And Remove search values
+        $ak = new static::$attributeKeyType();
+        $ak->removeRecordFromIndex($this->getID());
+    }
+    
     public static function getAttributeKeyType() {
         
         $rtn = static::$attributeKeyType;
@@ -123,20 +132,35 @@ abstract class RebarAttributedModel extends RebarModel {
         return $av;
     }  
     
-    abstract function reindex();
-    /*
-    public function reindex() {
+    protected function reindex() {
         
-        Cache::disableLocalCache();
+        //Stop stupidity 
+        if ($this->getID()) {
+            //Turn off the caching so we get a proper flush & reindex
+            Cache::disableLocalCache();
+
+            //Load the AtrributeKey for this object
+            $ak = new static::$attributeKeyType();
+
+            //1> Clear out the old values
+            $ak->removeRecordFromIndex($this->getID());
+
+            //2> Get a list of attributes for this record
+            $attrValues = $this->getAttributes('getSearchIndexValue');
+
+            //3> Column Headers for query
+            $searchableAttrs = array($ak->getSearchIndexPkID() => $this->getID());
+
+            //3> A dummy query we need for some reason
+            $rs = $this->db->Execute("SELECT * FROM {$ak->getIndexedSearchTable()} "
+                . "WHERE {$ak->getSearchIndexPkID()} = -1");
+
+            //Reindex
+            $ak->addRecordToIndex($searchableAttrs, $attrValues, $rs);
+
+            //Finally, re-enable the cache
+            Cache::enableLocalCache();
+        }
         
-        $attributes = forward_static_call(
-                array($this->attributeKeyClass, 'getAttributes'), 
-                $this->getID(), 'getSearchIndexValue');
-        
-        //$this->db->Execute
-        
-        
-        Cache::enableLocalCache();
-        
-    }*/
+    }
 }
