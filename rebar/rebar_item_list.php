@@ -192,5 +192,38 @@ abstract class RebarItemList extends DatabaseItemList {
         //$this->filter(false, "(kp.description LIKE $qkeywords)");
         /* ' OR kp.extra LIKE ' . $qkeywords . $attribsStr . ')'); */
     }
+    
+    /**
+     * Copy of the base getSortByURL method, but this returns rather than prints
+     * the URL that is built.
+     * 
+     * @param type $column
+     * @param type $dir
+     * @param type $baseURL
+     * @param type $additionalVars
+     * @return string
+     */
+    public function generateSortByURL($column, $dir = 'asc', $baseURL = false, $additionalVars = array()) {
+        if ($column instanceof AttributeKey) {
+            $column = 'ak_' . $column->getAttributeKeyHandle();
+        }
+        
+        $uh = Loader::helper('url');
+		
+        // we switch it up if this column is the currently active column and the direction is currently the case
+        if ($this->sortBy == $column && $this->sortByDirection == $dir) {
+                $dir = ($dir == 'asc') ? 'desc' : 'asc';
+        }
+        $args = array(
+                $this->queryStringSortVariable => $column,
+                $this->queryStringSortDirectionVariable => $dir
+        );
 
+        foreach($additionalVars as $k => $v) {
+                $args[$k] = $v;
+        }
+        $url = $uh->setVariable($args, false, $baseURL);
+        
+        return $url;
+    }
 }
