@@ -62,7 +62,7 @@ class RebarOrderedDisplayTable extends RebarDisplayTable {
             }
 
             //Process data cols
-            $searchReq = $this->itemList->getSearchRequest();            
+            $searchReq = $this->itemList->getSearchRequest();     
             foreach ($this->columns as $field => $col) {
 
                 //Can we order by this?

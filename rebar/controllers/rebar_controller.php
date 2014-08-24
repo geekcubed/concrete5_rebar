@@ -18,8 +18,9 @@ class RebarController extends Controller {
     protected static $ProcessActionEdit = 'edit';
     protected static $ProcessActionSuccess = 'success';
     protected static $ProcessActionError = 'error';
+    
     protected $record = null;
-
+    
     public function __construct() {
         parent::__construct();
 
@@ -38,8 +39,6 @@ class RebarController extends Controller {
      */
     protected function initCSRFToken() {
         $token = Loader::helper('validation/token');
-
-        //If POST'ing, validate
         if (!empty($_POST) && !$token->validate()) {
             //Invalid
             throw new Exception($token->getErrorMessage());
@@ -56,7 +55,7 @@ class RebarController extends Controller {
         foreach ($types as $type) {
             $key = "flash_{$type}";
             if (!empty($_SESSION[$key])) {
-                $this->set($type, $_SESSION[$key]);
+                $this->set($type, $_SESSION[$key]); //C5 automagically displays 'message', 'success', and 'error' for us in dashboard views
                 unset($_SESSION[$key]);
             }
         }
@@ -121,7 +120,6 @@ class RebarController extends Controller {
 
     //Wrapper around View::url that always passes the controller's path as the url path
     // so you can call url('task', etc.) instead of url('path/to/controller', 'tasks', etc.).
-
     /**
      * Wrapper around the default Concrete5 View:url() method. Method excepts
      * additional dynamic arguments which are passed via func_get_args();
@@ -149,7 +147,7 @@ class RebarController extends Controller {
     public function setArray(array $arr) {
         $this->setObject((object) $arr);
     }
-
+            
     /**
      * Sets controller variables from object properties (Property names
      * become variable names)
@@ -202,44 +200,40 @@ class RebarController extends Controller {
      * @return string Result status
      */
     public function processEditForm(&$id, RebarModel $model) {
-
+        
         $this->set($model->getPrimaryKeyColumm(), $id);
-
+        
         if ($this->isPost()) {
             $postData = $this->post();
             $error = $model->validate($postData);
-
-            if ($error->has()) {                
-                //C5 Dashboard pages automagically displays these errors for us in the view
+            
+            if ($error->has()) {
+                $this->set('error', $error); //C5 automagically displays these errors for us in the view
                 //C5 form helpers will automatically repopulate form fields from $_POST data
-                $this->set('error', $error); 
-                
-                //caller should manually repopulate data that isn't in $_POST
-                return self::$ProcessActionError;
+                return self::$ProcessActionError; // caller should manually repopulate data that isn't in $_POST
             } else {
                 $id = $model->save($postData);
                 $this->record = $model->getByID($id);
-
-                //caller should set flash message and redirect
-                return self::$ProcessActionSuccess; 
+                
+                return self::$ProcessActionSuccess; // caller should set flash message and redirect
             }
         } else if (empty($id)) {
             
             //caller should initialize form fields that don't start out empty/0
             return self::$ProcessActionAdd; 
         } else {
-            
             //Populate form fields with existing record data
             $this->record = $model->getById($id);
             if (!$this->record) {
                 $this->render404AndExit();
             }
-
+            
             $this->setObject($this->record);
 
             //caller should populate form fields with existing record data
             return self::$ProcessActionEdit;
         }
     }
+    
 
 }
